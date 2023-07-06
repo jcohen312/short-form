@@ -3,6 +3,7 @@ import re
 import requests
 import time
 import os
+from config import open_ai_key, leonardo_ai_auth
 
 
 def extract_text_between_quotes(string):
@@ -11,7 +12,7 @@ def extract_text_between_quotes(string):
     return matches[0]
 
 
-os.environ["OPENAI_API_KEY"] = "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"
+os.environ["OPENAI_API_KEY"] = open_ai_key
 
 guidance.llm = guidance.llms.OpenAI("text-davinci-003")
 
@@ -56,13 +57,10 @@ based on the following script:
 
 
 def run_scene_generator(scenes_with_times, full_script_text):
-
     output = []
 
     for idx, scene in enumerate(scenes_with_times):
-
         if idx == 0:
-
             first_scene = opening_scene_maker(
                 start_time=scene["start_time"],
                 end_time=scene["end_time"],
@@ -76,7 +74,6 @@ def run_scene_generator(scenes_with_times, full_script_text):
             output.append(d)
 
         else:
-
             subsequent_scene = subsequent_scene_maker(
                 last_scene=output[idx - 1]["scene_description"],
                 start_time=scene["start_time"],
@@ -149,9 +146,7 @@ prompt: {{gen 'prompt' temperature=0.1}}
 
 
 def generate_image_prompts(scenes_with_descriptions_list):
-
     for scene_with_description in scenes_with_descriptions_list:
-
         print(scene_with_description["scene_description"])
 
         image_prompt = prompt_generator(
@@ -180,7 +175,7 @@ def generate_image(prompt):
     headers = {
         "accept": "application/json",
         "content-type": "application/json",
-        "authorization": "Bearer 6cd67405-3118-435e-9bfe-9f0cb6ed10ee",
+        "authorization": leonardo_ai_auth,
     }
 
     response = requests.post(url, json=payload, headers=headers)
@@ -189,12 +184,11 @@ def generate_image(prompt):
 
 
 def download_image(generationId, base_path):
-
     url = f"https://cloud.leonardo.ai/api/rest/v1/generations/{generationId}"
 
     headers = {
         "accept": "application/json",
-        "authorization": "Bearer 6cd67405-3118-435e-9bfe-9f0cb6ed10ee",
+        "authorization": leonardo_ai_auth,
     }
 
     response = requests.get(url, headers=headers)
@@ -220,11 +214,9 @@ def download_image(generationId, base_path):
 
 
 def image_generator(scenes_with_prompts_json, path):
-
     new_json = []
 
     for scene in scenes_with_prompts_json:
-
         image_generation = generate_image(scene["prompt"])
 
         gen_id = image_generation["sdGenerationJob"]["generationId"]
@@ -242,4 +234,3 @@ def image_generator(scenes_with_prompts_json, path):
         new_json.append(scene)
 
     return new_json
-

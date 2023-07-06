@@ -3,21 +3,14 @@ import json
 import pickle
 import datetime
 import typer
-from generate_script import (
-    download_audio,
-    transcribe_gcs_with_word_time_offsets,
-    combine_words,
-)
+from config import open_ai_key
+from generate_script import download_audio, process_audio
 from generate_scenes import run_scene_generator, generate_image_prompts, image_generator
 from generate_video import stitch_video, create_srt_file
 
 base_folder = "/Users/jakecohen/Development/tiktok/app_data"
 
-os.environ[
-    "GOOGLE_APPLICATION_CREDENTIALS"
-] = "/Users/jakecohen/Development/nba-final-project-7735434b1865.json"
-
-os.environ["OPENAI_API_KEY"] = "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"
+os.environ["OPENAI_API_KEY"] = open_ai_key
 
 app = typer.Typer()
 
@@ -69,9 +62,7 @@ def load_obj(file_path):
 
 
 def directory_location(shortcut: str):
-
     if shortcut == "mo":
-
         path = base_folder + "/motivation"
 
     # print(path)
@@ -81,7 +72,6 @@ def directory_location(shortcut: str):
 
 @app.command()
 def create_working_directory(shortcut: str):
-
     directory = directory_location(shortcut)
     # Get today's date
     today = datetime.date.today().strftime("%Y-%m-%d")
@@ -122,7 +112,6 @@ def create_working_directory(shortcut: str):
 
 @app.command()
 def generate_scenes(scenes_with_times, full_script_text, save_path):
-
     scenes_with_descriptions = run_scene_generator(scenes_with_times, full_script_text)
 
     save_obj(scenes_with_descriptions, save_path + "/scenes_with_descriptions.pkl")
@@ -158,25 +147,22 @@ def generate_video(
 def generate(
     source_link: str,
     shortcut: str,
-    min_chunk_length: float = 4.5,
-    max_chunk_length: float = 5.9,
+    scene_method: str = "time",
+    max_length: float = 4.5,
 ):
-
     working_directory = create_working_directory(shortcut)
 
     download_audio(source_link, working_directory + "/audio")
 
-    word_timings = transcribe_gcs_with_word_time_offsets(
-        working_directory + "/audio.wav"
+    audio_json, word_timings, scene_timings, full_script = process_audio(
+        working_directory + "/audio.wav",
+        scene_method=scene_method,
+        max_length=max_length,
     )
+
+    save_obj(audio_json, working_directory + "/audio_json.pkl")
 
     save_obj(word_timings, working_directory + "/word_timings.pkl")
-
-    scene_timings, full_script = combine_words(
-        word_timings,
-        min_chunk_length=min_chunk_length,
-        max_chunk_length=max_chunk_length,
-    )
 
     save_obj(scene_timings, working_directory + "/scene_timings.pkl")
 
