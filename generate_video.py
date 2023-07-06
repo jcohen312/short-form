@@ -9,10 +9,10 @@ import pysrt
 def create_srt_file(script_list, output_file):
     with open(output_file, "w") as file:
         count = 1
-        for index, (start_time, stop_time, word_spoken) in enumerate(script_list):
-            start_time = format_time(start_time)
-            stop_time = format_time(stop_time)
-            subtitle = f"{count}\n{start_time} --> {stop_time}\n{word_spoken}\n\n"
+        for index, word_dict in enumerate(script_list):
+            start_time = format_time(word_dict["start_time"])
+            stop_time = format_time(word_dict["end_time"])
+            subtitle = f"{count}\n{start_time} --> {stop_time}\n{word_dict['word']}\n\n"
             file.write(subtitle)
             count += 1
 
@@ -132,4 +132,3 @@ def stitch_video(
 
     # Write the result to a file (remember to adjust the fps as per your requirement)
     final_video.write_videofile(output_file_name, codec="libx264", audio_codec="aac")
-
