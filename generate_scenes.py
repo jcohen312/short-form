@@ -168,7 +168,8 @@ def generate_image(prompt):
         "modelId": "b7aa9939-abed-4d4e-96c4-140b8c65dd92",
         "width": 832,
         "height": 1472,
-        "sd_version": "v2",
+        # "sd_version": "v2",
+        "promptMagic": True,
         "num_images": 1,
         "negative_prompt": """double image, repitition, double, double body, double face, double features, incorrect posture, two heads, two faces, Deformed, blurry, bad anatomy,  disfigured, poorly drawn face, mutation, mutated, {{extra limb}}, ugly, poorly drawn hands, missing limb, blurry, floating limbs, disconnected limbs, malformed hands, blur, out of focus, long neck, long body, {{{mutated hands and fingers}}}, {{{out of frame}}}, long fingers, cropped, low-res,  poorly-drawn face, out of frame double, two heads, blurred, ugly, disfigured, too many fingers, deformed, repetitive, grainy, extra limbs, bad anatomy, High pass filter,  closeup, deformed, extra limbs, extra fingers, mutated hands, bad anatomy, bad proportions ,  bad eyes, ugly eyes, dead eyes, blur, out of shot, out of focus, gaussian,""",
     }

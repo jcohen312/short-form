@@ -113,7 +113,7 @@ def create_scene_chunks_by_time(timings, max_length: float = 4.5):
 
             #             print(timing)
 
-            if current_chunk_length < 4.5:
+            if current_chunk_length < max_length:
                 current_chunk.append(word)
 
                 current_chunk_length += word_length + additional_time
