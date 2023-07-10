@@ -4,8 +4,13 @@ import pickle
 import datetime
 import typer
 from config import open_ai_key
-from generate_script import download_audio, process_audio
-from generate_scenes import run_scene_generator, generate_image_prompts, image_generator
+from generate_script import download_audio, process_audio, get_eleven_labs_audio
+from generate_scenes import (
+    run_scene_generator,
+    generate_image_prompts,
+    image_generator,
+    create_scene_styles,
+)
 from generate_video import stitch_video, create_srt_file
 
 base_folder = "/Users/jakecohen/Development/tiktok/app_data"
@@ -178,6 +183,40 @@ def generate(
         working_directory + "/srt_transcript.srt",
         working_directory + "/final_video.mp4",
     )
+
+
+@app.command()
+def generate_advanced(
+    script_text: str,
+    shortcut: str,
+    voice_id: str = "3b1SAmrWtC1EWVCpWoQF",
+    scene_method: str = "time",
+    max_scene_length: int = 4.5,
+    scene_style="image",
+):
+    working_directory = create_working_directory(shortcut)
+
+    audio_path = get_eleven_labs_audio(
+        script_text, voice_id=voice_id, base_path=working_directory
+    )
+
+    audio_json, word_timings, scene_timings, full_script = process_audio(
+        audio_path,
+        scene_method=scene_method,
+        max_length=max_scene_length,
+    )
+
+    save_obj(audio_json, working_directory + "/audio_json.pkl")
+
+    save_obj(word_timings, working_directory + "/word_timings.pkl")
+
+    save_obj(scene_timings, working_directory + "/scene_timings.pkl")
+
+    save_string_as_text(full_script, working_directory + "/transcribed_script.txt")
+
+    scenes_with_styles = create_scene_styles(scene_timings, style=scene_style)
+
+    save_obj(scenes_with_styles, working_directory + "/scenes_with_styles.pkl")
 
 
 if __name__ == "__main__":

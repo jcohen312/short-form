@@ -4,6 +4,7 @@ import requests
 import time
 import os
 from config import open_ai_key, leonardo_ai_auth
+import random
 
 
 def extract_text_between_quotes(string):
@@ -235,3 +236,36 @@ def image_generator(scenes_with_prompts_json, path):
         new_json.append(scene)
 
     return new_json
+
+
+def create_scene_styles(scene_timings_dict, style: str = "image"):
+    new_scenes = []
+
+    for scene in scene_timings_dict:
+        new_scene = scene
+
+        if style == "speaker":
+            new_scene["scene_style"] = "speaker"
+
+            new_scenes.append(new_scene)
+
+        elif style == "split":
+            new_scene["scene_style"] = "split"
+
+            new_scenes.append(new_scene)
+
+        elif style == "image":
+            new_scene["scene_style"] = "image"
+
+            new_scenes.append(new_scene)
+
+        elif style == "random":
+            option = options = ["split", "speaker", "image"]
+
+            random_choice = random.choice(options)
+
+            new_scene["scene_style"] = random_choice
+
+            new_scenes.append(new_scene)
+
+    return new_scenes

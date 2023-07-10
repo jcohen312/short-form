@@ -4,6 +4,9 @@ from PIL import Image
 import numpy
 import sys
 import pysrt
+import requests
+import config
+import time
 
 
 def create_srt_file(script_list, output_file):
@@ -118,7 +121,6 @@ def stitch_video(
     final_clip = mp.concatenate_videoclips(slides)
 
     subtitles = pysrt.open(srt_file)
-
     subtitle_clips = create_subtitle_clips(subtitles, final_clip.size)
 
     # Add subtitles to the video
@@ -132,3 +134,170 @@ def stitch_video(
 
     # Write the result to a file (remember to adjust the fps as per your requirement)
     final_video.write_videofile(output_file_name, codec="libx264", audio_codec="aac")
+
+
+def download_file(url, save_path):
+    response = requests.get(url)
+    response.raise_for_status()  # Raise an exception if the request was unsuccessful
+
+    with open(save_path, "wb") as file:
+        file.write(response.content)
+
+    print(f"File downloaded successfully and saved at {save_path}")
+
+    return save_path
+
+
+def create_did_video(audio_url, source_image_url):
+    url = "https://api.d-id.com/talks"
+
+    payload = {
+        "script": {
+            "type": "audio",
+            "subtitles": "false",
+            "provider": {"type": "microsoft", "voice_id": "en-US-JennyNeural"},
+            "ssml": "false",
+            "reduce_noise": "false",
+            "audio_url": audio_url,
+        },
+        "config": {"fluent": "false", "pad_audio": "0.0"},
+        "source_url": source_image_url,
+        #          "face": { "size": 1920 }
+    }
+
+    headers = {
+        "accept": "application/json",
+        "content-type": "application/json",
+        "authorization": f"Basic {config.did_key}",
+    }
+
+    response = requests.post(url, json=payload, headers=headers)
+
+    return response.json()
+
+
+def get_did_talk(talk_id):
+    url = f"https://api.d-id.com/talks/{talk_id}"
+
+    headers = {"accept": "application/json", "authorization": f"Basic {config.did_key}"}
+    response = requests.get(url, headers=headers)
+
+    return response.json()
+
+
+def upload_audio_to_did(audio_file_path):
+    url = "https://api.d-id.com/audios"
+
+    files = {"audio": (audio_file_path, open(audio_file_path, "rb"), "audio/mpeg")}
+    headers = {"accept": "application/json", "authorization": f"Basic {config.did_key}"}
+
+    response = requests.post(url, files=files, headers=headers)
+
+    return response.json()
+
+
+def process_did_video(audio_file_path, source_image_url, save_path):
+    audio_upload_response = upload_audio_to_did(audio_file_path)
+
+    print(audio_upload_response)
+
+    video_create_response = create_did_video(
+        audio_upload_response["url"], source_image_url
+    )
+
+    print(video_create_response)
+
+    time.sleep(30)
+
+    retrieve_talk_response = get_did_talk(video_create_response["id"])
+
+    print(retrieve_talk_response)
+
+    video_path = download_file(retrieve_talk_response["result_url"], save_path)
+
+    print(video_path)
+
+    return (
+        audio_upload_response,
+        video_create_response,
+        retrieve_talk_response,
+        video_path,
+    )
+
+
+def resize_clip(file_path, size=(1080, 1920), subtitle_clips=None):
+    clip = mp.VideoFileClip(file_path)
+
+    new_clip = clip.resize(size)
+
+    if subtitle_clips:
+        final_video = mp.CompositeVideoClip([new_clip] + subtitle_clips)
+
+    else:
+        final_video = new_clip
+
+    audio = mp.AudioFileClip(file_path)
+
+    final_video.audio = audio
+
+    # # Write the result to a file (remember to adjust the fps as per your requirement)
+    if file_path.endswith(".mp4"):
+        new_path = file_path[:-4] + "_resized.mp4"
+    else:
+        new_path = file_path
+
+    final_video.write_videofile(new_path, audio_codec="aac")
+
+    return new_path
+
+
+def stitch_speaker_video(video_path, final_size=(1080, 1920), srt_file=""):
+    if srt_file:
+        subtitles = pysrt.open(srt_file)
+
+        subtitle_clips = create_subtitle_clips(subtitles, final_size)
+
+        final_video = resize_clip(
+            video_path, size=final_size, subtitle_clips=subtitle_clips
+        )
+
+    else:
+        final_video = resize_clip(video_path, size=final_size)
+
+    return final_video
+
+
+def create_video_from_scene_styles(
+    scenes_with_styles,
+    audio_file,
+    output_file_name,
+    srt_file="",
+    final_size=(1080, 1920),
+    speaker_image="https://create-images-results.d-id.com/google-oauth2%7C103445322921472417399/drm_U1K7sfMZejIwm6ndz8u1c/image.png",
+):
+    if all(d.get("scene_style") == "speaker" for d in scenes_with_styles):
+        print("All scene_style values are 'speaker'")
+        # NO NEED TO GENERATE SCENE DESCRIPTIONS OR IMAGES. SIMPLY GENERATE VIDEO FROM DID AND ADD SUBTITLES
+
+        (
+            audio_upload_response,
+            video_create_response,
+            retrieve_talk_response,
+            video_path,
+        ) = process_did_video(audio_file, speaker_image, output_file_name)
+
+        final_path = stitch_speaker_video(
+            video_path, final_size=final_size, srt_file=srt_file
+        )
+
+        print("video created!")
+        print(f"video save here --> {final_path}")
+
+    #        RENAME VARIABLES ABOVE, SAVE THEM AND RESIZE CLIP
+
+    # Your code here
+    elif all(d.get("scene_style") == "image" for d in scenes_with_styles):
+        print("All scene_style values are 'speaker'")
+
+
+#       JUMP INTO NORMAL PROCESS THAT EXISTS
