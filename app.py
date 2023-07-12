@@ -4,14 +4,19 @@ import pickle
 import datetime
 import typer
 from config import open_ai_key
-from generate_script import download_audio, process_audio, get_eleven_labs_audio
+from generate_script import (
+    download_audio,
+    process_audio,
+    get_eleven_labs_audio,
+    transcribe_audio,
+)
 from generate_scenes import (
     run_scene_generator,
     generate_image_prompts,
     image_generator,
     create_scene_styles,
 )
-from generate_video import stitch_video, create_srt_file
+from generate_video import stitch_video, create_srt_file, create_video_from_scene_styles
 
 base_folder = "/Users/jakecohen/Development/tiktok/app_data"
 
@@ -189,16 +194,39 @@ def generate(
 def generate_advanced(
     script_text: str,
     shortcut: str,
+    voice_format: str = "custom",
     voice_id: str = "3b1SAmrWtC1EWVCpWoQF",
+    speaker_image: str = "https://create-images-results.d-id.com/google-oauth2%7C103445322921472417399/drm_U1K7sfMZejIwm6ndz8u1c/image.png",
     scene_method: str = "time",
     max_scene_length: int = 4.5,
     scene_style="image",
+    subtitles: str = "yes",
 ):
     working_directory = create_working_directory(shortcut)
 
-    audio_path = get_eleven_labs_audio(
-        script_text, voice_id=voice_id, base_path=working_directory
-    )
+    if ("youtube.com" in script_text) or ("tiktok.com" in script_text):
+        print("internet source detected. downloading audio")
+
+        download_audio(script_text, working_directory + "/audio")
+
+        if voice_format == "custom":
+            audio_json, word_timings, scene_timings, full_script = process_audio(
+                working_directory + "/audio.wav",
+                scene_method=scene_method,
+                max_length=max_scene_length,
+            )
+
+            audio_path = get_eleven_labs_audio(
+                full_script, voice_id=voice_id, base_path=working_directory
+            )
+
+        elif voice_format == "source":
+            audio_path = working_directory + "/audio.wav"
+
+    else:
+        audio_path = get_eleven_labs_audio(
+            script_text, voice_id=voice_id, base_path=working_directory
+        )
 
     audio_json, word_timings, scene_timings, full_script = process_audio(
         audio_path,
@@ -217,6 +245,22 @@ def generate_advanced(
     scenes_with_styles = create_scene_styles(scene_timings, style=scene_style)
 
     save_obj(scenes_with_styles, working_directory + "/scenes_with_styles.pkl")
+
+    if subtitles == "yes":
+        make_srt_file(word_timings, working_directory + "/srt_transcript.srt")
+
+        srt_file = working_directory + "/srt_transcript.srt"
+
+    elif subtitles == "no":
+        srt_file = ""
+
+    create_video_from_scene_styles(
+        scenes_with_styles,
+        audio_path,
+        working_directory + "/final_video.mp4",
+        srt_file=srt_file,
+        speaker_image=speaker_image,
+    )
 
 
 if __name__ == "__main__":

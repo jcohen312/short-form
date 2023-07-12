@@ -7,6 +7,7 @@ import pysrt
 import requests
 import config
 import time
+from moviepy.video.fx.all import crop
 
 
 def create_srt_file(script_list, output_file):
@@ -160,7 +161,7 @@ def create_did_video(audio_url, source_image_url):
             "reduce_noise": "false",
             "audio_url": audio_url,
         },
-        "config": {"fluent": "false", "pad_audio": "0.0"},
+        "config": {"fluent": "false", "pad_audio": "0.0", "stitch": "true"},
         "source_url": source_image_url,
         #          "face": { "size": 1920 }
     }
@@ -197,6 +198,8 @@ def upload_audio_to_did(audio_file_path):
 
 
 def process_did_video(audio_file_path, source_image_url, save_path):
+    print(f"uploading audio to did from {audio_file_path}")
+
     audio_upload_response = upload_audio_to_did(audio_file_path)
 
     print(audio_upload_response)
@@ -228,7 +231,7 @@ def process_did_video(audio_file_path, source_image_url, save_path):
 def resize_clip(file_path, size=(1080, 1920), subtitle_clips=None):
     clip = mp.VideoFileClip(file_path)
 
-    new_clip = clip.resize(size)
+    new_clip = crop(clip.resize(size), 1650).resize(size)
 
     if subtitle_clips:
         final_video = mp.CompositeVideoClip([new_clip] + subtitle_clips)
@@ -249,6 +252,33 @@ def resize_clip(file_path, size=(1080, 1920), subtitle_clips=None):
     final_video.write_videofile(new_path, audio_codec="aac")
 
     return new_path
+
+
+def create_watermark(output_name, video, text, font, font_color, background_color):
+    text_clip = mp.TextClip(
+        txt=text.upper(), size=(0.4 * video.size[0], 0), font=font, color=font_color
+    )
+    text_clip = text_clip.set_position("center")
+
+    im_width, im_height = text_clip.size
+
+    color_clip = mp.ColorClip(
+        size=(int(im_width * 1.1), int(im_height * 1.4)), color=background_color
+    )
+
+    color_clip = color_clip.set_opacity(0.4)
+
+    overlay_padding_x = (video.size[0] - color_clip.size[0]) / 2
+
+    clip_to_overlay = mp.CompositeVideoClip([color_clip, text_clip])
+
+    clip_to_overlay = clip_to_overlay.set_position(
+        (overlay_padding_x, 1700)
+    ).set_duration(video.duration)
+
+    final_clip = mp.CompositeVideoClip([video, clip_to_overlay])
+
+    final_clip.write_videofile(output_name, audio_codec="aac")
 
 
 def stitch_speaker_video(video_path, final_size=(1080, 1920), srt_file=""):
@@ -288,6 +318,15 @@ def create_video_from_scene_styles(
 
         final_path = stitch_speaker_video(
             video_path, final_size=final_size, srt_file=srt_file
+        )
+
+        create_watermark(
+            final_path,
+            mp.VideoFileClip(final_path),
+            "@ I G N I T E . A I 1".upper(),
+            "Lane",
+            "white",
+            (0, 0, 0),
         )
 
         print("video created!")
