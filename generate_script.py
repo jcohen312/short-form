@@ -199,7 +199,7 @@ def process_audio(audio_file, scene_method: str = "time", max_length: float = 4.
 
 
 def get_eleven_labs_audio(
-    text: str, voice_id: str = "3b1SAmrWtC1EWVCpWoQF", base_path: str = ""
+    text: str, voice_id: str = "35zdmhksNzRmrGWfWLVl", base_path: str = ""
 ):
     CHUNK_SIZE = 1024
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"

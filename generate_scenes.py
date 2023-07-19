@@ -225,7 +225,7 @@ def image_generator(scenes_with_prompts_json, path):
 
         print(gen_id)
 
-        time.sleep(20)
+        time.sleep(30)
 
         leoai_json, img = download_image(gen_id, path)
 
